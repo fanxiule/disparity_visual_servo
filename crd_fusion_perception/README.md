@@ -4,5 +4,5 @@ This package includes code based on [CRD-Fusion](https://github.com/fanxiule/CRD
 ## Using the Package
 First ensure `roscore` is running, then run
 ```
-rosrun crd_fusion_perception refine_disp.py
+roslaunch crd_fusion_perception refine_disp.launch
 ```
