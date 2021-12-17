@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+
+import os
+
+from numpy.core.fromnumeric import amax
+import rospy
+import rospkg
+import cv2
+import numpy as np
+from message_filters import Subscriber, ApproximateTimeSynchronizer
+from sensor_msgs.msg import Image
+from stereo_msgs.msg import DisparityImage
+from cv_bridge import CvBridge, CvBridgeError
+
+np.seterr(divide='ignore')  # suppress warnings from division by 0
+
+
+class converter:
+    def __init__(self, baseline, focal_length, save_path):
+        self.baseline = baseline
+        self.focal_length = focal_length
+        self.crop_w = 320
+        self.crop_h = 240
+        self.bridge = CvBridge()
+
+        self.save_path = save_path
+        if not os.path.exists(self.save_path):
+            os.makedirs(os.path.join(self.save_path, "left"))
+            os.makedirs(os.path.join(self.save_path, "right"))
+            os.makedirs(os.path.join(self.save_path, "raw_disp"))
+            os.makedirs(os.path.join(self.save_path, "gt_disp"))
+        self.counter = 0
+
+        # D435 topics
+        self.left_sub = Subscriber("/camera/infra1/image_raw", Image)
+        self.right_sub = Subscriber("/camera/infra2/image_raw", Image)
+        self.raw_disp_sub = Subscriber("/raw_disp", Image)
+        self.depth_sub = Subscriber("/camera/depth/image_raw", Image)
+
+        # synchronize received data
+        self.synch = ApproximateTimeSynchronizer(
+            [self.left_sub, self.right_sub, self.raw_disp_sub, self.depth_sub], queue_size=1, slop=0.002)
+
+        self.synch.registerCallback(self._callback)
+
+    @staticmethod
+    def _disp_encoding(disp):
+        """
+        Encode the raw disparity with subpixel-level accuracy into a color image. Utilize R and G channels to store
+        disparity. Implementation is based on sintel development kit. .png files are more compact than .npy files
+
+        :param disp: raw disparity
+        :return: encoded disparity in the form of BGR image (default OpenCV format)
+        """
+        disp[disp > 1024] = 1024
+        disp[disp < 0] = 0
+        encoded_disp = np.zeros(
+            (disp.shape[0], disp.shape[1], 3), dtype='uint8')
+        d_r, remainder = np.divmod(disp, 4.0)
+        d_r = d_r.astype('uint8')
+        d_g = (64.0 * remainder).astype('uint8')
+        # Note that OpenCV by default treats image as BGR instead of RGB
+        encoded_disp[:, :, 1] = d_g
+        encoded_disp[:, :, 2] = d_r
+        return encoded_disp
+
+    def _resize_img(self, img):
+        shape = np.shape(img)
+        h = shape[0]
+        w = shape[1]
+        x1 = (w - self.crop_w) // 2
+        y1 = (h - self.crop_h) // 2
+        x2 = x1 + self.crop_w
+        y2 = y1 + self.crop_h
+        img = img[y1:y2, x1:x2]
+        return img
+
+    def _callback(self, left, right, raw_disp, dep):
+        try:
+            left_im = self.bridge.imgmsg_to_cv2(left)
+            right_im = self.bridge.imgmsg_to_cv2(right)
+            raw_disp = self.bridge.imgmsg_to_cv2(raw_disp)
+            depth = self.bridge.imgmsg_to_cv2(dep)
+        except CvBridgeError as e:
+            print(e)
+
+        left_im_path = os.path.join(
+            self.save_path, "left", "%d.png" % self.counter)
+        right_im_path = os.path.join(
+            self.save_path, "right", "%d.png" % self.counter)
+        raw_disp_path = os.path.join(
+            self.save_path, "raw_disp", "%d.png" % self.counter)
+        gt_disp_path = os.path.join(
+            self.save_path, "gt_disp", "%d.png" % self.counter)
+
+        # depth = np.asarray(depth)
+        left_im = self._resize_img(left_im)
+        right_im = self._resize_img(right_im)
+        raw_disp = self._resize_img(raw_disp)
+        depth = self._resize_img(depth)
+
+        gt_disp = self.baseline * self.focal_length / \
+            depth  # baseline in mm, depth in mm
+        gt_disp = np.nan_to_num(gt_disp)
+        gt_disp = self._disp_encoding(gt_disp)
+
+        raw_disp = np.clip(raw_disp, a_min=0, a_max=192)
+        raw_disp = self._disp_encoding(raw_disp)
+
+        cv2.imwrite(left_im_path, left_im)
+        cv2.imwrite(right_im_path, right_im)
+        cv2.imwrite(raw_disp_path, raw_disp)
+        cv2.imwrite(gt_disp_path, gt_disp)
+        print("Processed D435 frame #%d" % self.counter)
+        self.counter += 1
+
+
+def main(baseline, focal_length, save_path):
+    rospy.init_node("save_img", anonymous=True)
+    convert = converter(baseline, focal_length, save_path)
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        print("Shut down")
+
+
+if __name__ == '__main__':
+    rospack = rospkg.RosPack()
+    pkg_path = rospack.get_path("turtlebot3_d435")
+    save_path = os.path.join(pkg_path, "imgs")
+    baseline = 50
+    focal_length = 434.9969
+
+    print("Use parameters: b = %.3f mm, f = %.3f px" %
+          (baseline, focal_length))
+    print("Save images in %s" % save_path)
+
+    main(baseline, focal_length, save_path)

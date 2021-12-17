@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="turtlebot3_d435" type="save_img.py" name="save_img" output="screen"/>
+</launch>

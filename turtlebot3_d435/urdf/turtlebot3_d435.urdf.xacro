@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<robot name="turtlebot3_d435" xmlns:xacro="http://ros.org/wiki/xacro">
+
+    <xacro:arg name="robot_config" default="burger" />
+    <!-- Import turtlebot model -->
+    <xacro:include filename="$(find turtlebot3_description)/urdf/turtlebot3_$(arg robot_config).urdf.xacro" />
+    <!-- Import macro for D435 camera-->
+    <xacro:include filename="$(find d435_gazebo_plugin)/urdf/d435.urdf.xacro" />
+    
+    <!-- Create camera instance -->
+    <xacro:sensor_d435 parent="base_footprint">
+        <origin xyz="0.045 0 0.102" rpy="0 0 0" />
+    </xacro:sensor_d435>
+</robot>
