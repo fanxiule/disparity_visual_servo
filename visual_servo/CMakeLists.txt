@@ -22,3 +22,8 @@ catkin_install_python(PROGRAMS
   script/save_target.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+catkin_install_python(PROGRAMS
+  script/controller.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

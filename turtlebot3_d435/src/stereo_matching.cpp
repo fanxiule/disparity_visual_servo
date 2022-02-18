@@ -27,7 +27,7 @@ const int speckle_range = 1;
 const int sgbm_mode = StereoSGBM::MODE_SGBM;
 
 // BASELINE 0.05
-// FOCAL LENGTH 696
+// FOCAL LENGTH 435 for 800 x 600
 
 class RawDispGenerator
 {

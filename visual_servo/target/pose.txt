@@ -1,7 +1,7 @@
-pos_x: -3.000
-pos_y: 1.000
+pos_x: 3.270
+pos_y: 4.186
 pos_z: -0.001
-orient_x: -0.000
+orient_x: 0.001
 orient_y: 0.004
-orient_z: 0.000
-orient_w: 1.000
+orient_z: -0.134
+orient_w: 0.991
