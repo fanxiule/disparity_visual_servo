@@ -1,0 +1,7 @@
+pos_x: -3.000
+pos_y: 1.000
+pos_z: -0.001
+orient_x: -0.000
+orient_y: 0.004
+orient_z: 0.000
+orient_w: 1.000

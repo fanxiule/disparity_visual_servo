@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # Copied from https://github.com/eric-wieser/ros_numpy
 

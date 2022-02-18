@@ -7,11 +7,10 @@ import numpy as np
 import rospy
 import torch
 import rospkg
-from rospy.topics import Subscriber
 
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
-from image_np_conversion import image_to_numpy, numpy_to_image
+from depth_visual_servo_common.image_np_conversion import image_to_numpy, numpy_to_image
 
 from conf_generation import ConfGeneration
 from crd_fusion import CRDFusionNet
@@ -21,8 +20,8 @@ class DispRefiner:
     def __init__(self, checkpt, device):
         self.device = device
 
-        # input images are 1280 x 720
-        # crop them to 640 x 480 to be consistent with image size for CRD-Fusion training
+        # input images are 800 x 600
+        # crop them to 320 x 240 to be consistent with image size for CRD-Fusion training
         crop_w = 320
         crop_h = 240
         self.crop_x1 = (800 - crop_w) // 2
@@ -52,7 +51,8 @@ class DispRefiner:
         self.sub_synch = ApproximateTimeSynchronizer(
             [self.left_img_sub, self.right_img_sub, self.raw_disp_sub], queue_size=2, slop=0.1)
         self.sub_synch.registerCallback(self._callback)
-        self.refined_disp_pub = rospy.Publisher("/refined_disp", Image, queue_size=10)
+        self.refined_disp_pub = rospy.Publisher(
+            "/refined_disp", Image, queue_size=10)
         self.occ_pub = rospy.Publisher("/occlusion", Image, queue_size=10)
 
     def _norm_disp(self, disp):
@@ -90,8 +90,9 @@ class DispRefiner:
         conf = self.conf_gen.cal_confidence(left_ir, right_ir, raw_disp)
         conf[conf < self.conf_thres] = 0
         outputs = self.network(left_ir, right_ir, norm_raw_disp, conf)
-        
-        refined_disp = torch.squeeze(outputs['refined_disp0']).detach().cpu().numpy()
+
+        refined_disp = torch.squeeze(
+            outputs['refined_disp0']).detach().cpu().numpy()
         occ = torch.squeeze(outputs['occ0']).detach().cpu().numpy()
         occ = (255*occ).astype("uint8")
         refined_disp_msg = numpy_to_image(refined_disp, "32FC1")

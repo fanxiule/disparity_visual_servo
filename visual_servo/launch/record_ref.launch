@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="visual_servo" type="save_target.py" name="record_ref" output="screen"/>
+</launch>
