@@ -16,10 +16,12 @@ void poseCallback(const gazebo_msgs::ModelStatesConstPtr &msg)
     double orient_z = robot_pose.orientation.z;
     double orient_w = robot_pose.orientation.w;
 
+    // transform from origin to robot
     tf::Transform transform;
     transform.setOrigin(tf::Vector3(pos_x, pos_y, pos_z));
-    transform.setRotation(tf::Quaternion(orient_x, orient_y, orient_z, orient_w)); // transform from origin to robot
-    // needs to convert transform to from robot to origin
+    transform.setRotation(tf::Quaternion(orient_x, orient_y, orient_z, orient_w));
+
+    // needs to convert transform to from robot to origin in order to transform the robot base back to the world origin
     br.sendTransform(tf::StampedTransform(transform.inverse(), ros::Time::now(), "base_footprint", "world"));
 }
 

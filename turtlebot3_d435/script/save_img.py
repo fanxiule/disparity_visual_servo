@@ -2,25 +2,29 @@
 
 import os
 
-from numpy.core.fromnumeric import amax
 import rospy
 import rospkg
 import cv2
 import numpy as np
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
-from stereo_msgs.msg import DisparityImage
 from cv_bridge import CvBridge, CvBridgeError
 
 np.seterr(divide='ignore')  # suppress warnings from division by 0
 
 
-class converter:
+class Converter:
     def __init__(self, baseline, focal_length, save_path):
+        """
+        A class to save the camera images
+        
+        :param baseline: camera baseline in mm
+        :param focal_length: camera focal length in x direction in pixels
+        :param save_path: directory to save the images
+        """
         self.baseline = baseline
         self.focal_length = focal_length
-        self.crop_w = 320
-        self.crop_h = 240
+        self.crop_w, self.crop_h = rospy.get_param("/visual_servo/cropped_img_sz")
         self.bridge = CvBridge()
 
         self.save_path = save_path
@@ -39,8 +43,7 @@ class converter:
 
         # synchronize received data
         self.synch = ApproximateTimeSynchronizer(
-            [self.left_sub, self.right_sub, self.raw_disp_sub, self.depth_sub], queue_size=1, slop=0.002)
-
+            [self.left_sub, self.right_sub, self.raw_disp_sub, self.depth_sub], queue_size=5, slop=0.01)
         self.synch.registerCallback(self._callback)
 
     @staticmethod
@@ -65,6 +68,12 @@ class converter:
         return encoded_disp
 
     def _resize_img(self, img):
+        """
+        Crop image
+
+        :param image: input image
+        :return: resized image
+        """
         shape = np.shape(img)
         h = shape[0]
         w = shape[1]
@@ -76,6 +85,15 @@ class converter:
         return img
 
     def _callback(self, left, right, raw_disp, dep):
+        """
+        Callback to crop and save images
+
+        :param left: ROS message for left IR image
+        :param right: ROS message for right IR image
+        :param raw_disp: ROS message for raw disparity map
+        :param dep: ROS message for depth map
+        """
+        # convert ROS Image message to CV2/numpy format
         try:
             left_im = self.bridge.imgmsg_to_cv2(left)
             right_im = self.bridge.imgmsg_to_cv2(right)
@@ -83,7 +101,8 @@ class converter:
             depth = self.bridge.imgmsg_to_cv2(dep)
         except CvBridgeError as e:
             print(e)
-
+        
+        # save path for each image
         left_im_path = os.path.join(
             self.save_path, "left", "%d.png" % self.counter)
         right_im_path = os.path.join(
@@ -92,32 +111,35 @@ class converter:
             self.save_path, "raw_disp", "%d.png" % self.counter)
         gt_disp_path = os.path.join(
             self.save_path, "gt_disp", "%d.png" % self.counter)
-
-        # depth = np.asarray(depth)
+        
+        # crop images
         left_im = self._resize_img(left_im)
         right_im = self._resize_img(right_im)
         raw_disp = self._resize_img(raw_disp)
         depth = self._resize_img(depth)
 
+        # process disparity
         gt_disp = self.baseline * self.focal_length / \
             depth  # baseline in mm, depth in mm
         gt_disp = np.nan_to_num(gt_disp)
         gt_disp = self._disp_encoding(gt_disp)
-
         raw_disp = np.clip(raw_disp, a_min=0, a_max=192)
         raw_disp = self._disp_encoding(raw_disp)
 
+        # save images
         cv2.imwrite(left_im_path, left_im)
         cv2.imwrite(right_im_path, right_im)
         cv2.imwrite(raw_disp_path, raw_disp)
         cv2.imwrite(gt_disp_path, gt_disp)
+
+        # print number of frames processed
         print("Processed D435 frame #%d" % self.counter)
         self.counter += 1
 
 
 def main(baseline, focal_length, save_path):
     rospy.init_node("save_img", anonymous=True)
-    convert = converter(baseline, focal_length, save_path)
+    converter = Converter(baseline, focal_length, save_path)
     try:
         rospy.spin()
     except KeyboardInterrupt:
@@ -128,8 +150,8 @@ if __name__ == '__main__':
     rospack = rospkg.RosPack()
     pkg_path = rospack.get_path("turtlebot3_d435")
     save_path = os.path.join(pkg_path, "imgs")
-    baseline = 50
-    focal_length = 434.9969
+    baseline = 1000 * rospy.get_param("/visual_servo/baseline")
+    focal_length = rospy.get_param("/visual_servo/focal_fx")
 
     print("Use parameters: b = %.3f mm, f = %.3f px" %
           (baseline, focal_length))

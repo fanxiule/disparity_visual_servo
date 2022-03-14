@@ -14,33 +14,32 @@ using namespace cv_bridge;
 using namespace std_msgs;
 
 typedef message_filters::sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
+// constants for BM and SGBM
 const int min_disp = 0;
 const int num_disp = 192;
 const int block_sz = 11;
-const int p1 = 8 * block_sz * block_sz;
-const int p2 = 32 * block_sz * block_sz;
-const int lr_thres = 1;
-const int pre_filter_cap = 15;
-const int uniqueness_ratio = 15;
-const int speckle_sindow = 150;
-const int speckle_range = 1;
-const int sgbm_mode = StereoSGBM::MODE_SGBM;
 
-// BASELINE 0.05
-// FOCAL LENGTH 435 for 800 x 600
+// constants for SGBM
+// const int p1 = 8 * block_sz * block_sz;
+// const int p2 = 32 * block_sz * block_sz;
+// const int lr_thres = 1;
+// const int pre_filter_cap = 15;
+// const int uniqueness_ratio = 15;
+// const int speckle_sindow = 150;
+// const int speckle_range = 1;
+// const int sgbm_mode = StereoSGBM::MODE_SGBM;
 
 class RawDispGenerator
 {
-    // example https://answers.ros.org/question/59725/publishing-to-a-topic-via-subscriber-callback-function/
-    // and https://answers.ros.org/question/172772/writing-a-c-class-with-message_filters-member/
 public:
     RawDispGenerator() : sync(MySyncPolicy(100), ir1_sub, ir2_sub)
     {
-        disp_publisher = nh.advertise<Image>("/raw_disp", 100);
+        disp_publisher = nh.advertise<Image>("/raw_disp", 1);
         stereo_matcher = StereoBM::create(num_disp, block_sz);
+        // for SGBM
         // stereo_matcher = StereoSGBM::create(min_disp, num_disp, block_sz, p1, p2, lr_thres, pre_filter_cap, uniqueness_ratio, speckle_sindow, speckle_range, sgbm_mode);
-        ir1_sub.subscribe(nh, "/camera/infra1/image_raw", 100);
-        ir2_sub.subscribe(nh, "/camera/infra2/image_raw", 100);
+        ir1_sub.subscribe(nh, "/camera/infra1/image_raw", 1);
+        ir2_sub.subscribe(nh, "/camera/infra2/image_raw", 1);
         sync.registerCallback(boost::bind(&RawDispGenerator::callback, this, _1, _2));
     }
     ~RawDispGenerator() {}
@@ -54,6 +53,7 @@ private:
     message_filters::Subscriber<Image> ir2_sub;
     message_filters::Synchronizer<MySyncPolicy> sync;
 
+    // convert image for ROS Image ponter to CV pointer
     cv_bridge::CvImagePtr convertImg(const ImageConstPtr &msg)
     {
         cv_bridge::CvImagePtr cv_ptr;
@@ -78,6 +78,7 @@ private:
         CvImage disp_image_bridge;
         Image disp_img;
 
+        // stereo matching
         Mat ir1_img = ir1_ptr->image;
         Mat ir2_img = ir2_ptr->image;
         Mat init_disp;
@@ -85,6 +86,7 @@ private:
         stereo_matcher->compute(ir1_img, ir2_img, init_disp);
         init_disp.convertTo(f_disp, CV_32FC1, 1.0f / 16.0f);
 
+        // publish raw disaprity
         Header header = ir1_ptr->header;
         disp_image_bridge = CvImage(header, image_encodings::TYPE_32FC1, f_disp);
         disp_image_bridge.toImageMsg(disp_img);

@@ -3,6 +3,7 @@
     <arg name="x_pos" default="-3.0" />
     <arg name="y_pos" default="1.0" />
     <arg name="z_pos" default="0.0" />
+    <arg name="z_rot" default="0.0" />
     <arg name="open_rviz" default="true" />
     <arg name="rviz_config" default="$(find d435_gazebo_plugin)/rviz/camera_ground.rviz" />
 
@@ -18,7 +19,7 @@
 
     <!-- Load URDF -->
     <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_d435)/urdf/turtlebot3_d435.urdf.xacro" />
-    <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
+    <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -Y $(arg z_rot) -param robot_description" />
     <node pkg="robot_state_publisher" name="robot_state_publisher" type="robot_state_publisher" />
     <node pkg="turtlebot3_d435" name="add_world_frame" type="add_world_frame" />
 

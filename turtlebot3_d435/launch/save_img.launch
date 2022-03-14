@@ -1,3 +1,4 @@
 <launch>
+    <include file="$(find depth_visual_servo_common)/launch/set_common_param.launch" />
     <node pkg="turtlebot3_d435" type="save_img.py" name="save_img" output="screen"/>
 </launch>

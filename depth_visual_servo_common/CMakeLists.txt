@@ -8,6 +8,15 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
 )
 
-catkin_python_setup()
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
 
 catkin_package()
+
+catkin_install_python(PROGRAMS
+  script/set_common_param.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+catkin_python_setup()
