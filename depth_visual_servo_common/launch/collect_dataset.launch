@@ -1,0 +1,23 @@
+<launch>
+    <arg name="model" default="burger" />
+    <arg name="x_pos" default="0.0" />
+    <arg name="y_pos" default="0.0" />
+    <arg name="z_pos" default="0.0" />
+    <arg name="z_rot" default="0.0" />
+    <arg name="open_rviz" default="true" />
+    <arg name="rviz_config" default="$(find turtlebot3_d435)/rviz/robot_images.rviz" />
+
+    <include file="$(find turtlebot3_d435)/launch/turtlebot3_d435_raw_disp.launch">
+        <arg name="model" value="$(arg model)" />
+        <arg name="x_pos" value="$(arg x_pos)" />
+        <arg name="y_pos" value="$(arg y_pos)" />
+        <arg name="z_pos" value="$(arg z_pos)" />
+        <arg name="z_rot" value="$(arg z_rot)" />
+        <arg name="open_rviz" value="$(arg open_rviz)" />
+        <arg name="rviz_config" value="$(arg rviz_config)" />
+    </include>
+
+    <include file="$(find turtlebot3_teleop)/launch/turtlebot3_teleop_key.launch"/>
+
+    <node pkg="rosbag" type="record" name="record_dataset" args="-o $(find depth_visual_servo_common)/dataset /raw_disp /camera/depth/image_raw /camera/infra1/image_raw /camera/infra2/image_raw" output="screen" />
+</launch>

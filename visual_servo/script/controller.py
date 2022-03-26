@@ -41,8 +41,6 @@ class DispController:
         self.fx = fx
         self.fy = fy
         self.baseline = baseline
-        self.vel_trans = np.array([[0, 0, 1, 0.104, -0.018, 0], [-1, 0, 0, 0, 0.045, 0.104], [
-                                  0, -1, 0, -0.045, 0, -0.018], [0, 0, 0, 0, 0, 1], [0, 0, 0, -1, 0, 0], [0, 0, 0, 0, -1, 0]])
 
         # flatten ref_disp and create binary vector for ref_occ
         self.ref_disp = ref_disp.flatten()
@@ -53,8 +51,8 @@ class DispController:
         u = np.arange(1, img_w + 1)
         v = np.arange(1, img_h + 1)
         u, v = np.meshgrid(u, v)
-        self.x = (u - cu) / self.fx
-        self.y = (v - cv) / self.fy
+        self.x = u - cu
+        self.y = v - cv
 
         # subscribers and publisher
         self.disp_sub = Subscriber("/refined_disp", Image)
@@ -65,9 +63,8 @@ class DispController:
         self.vel_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
 
         # a different strategy for camera-wheel velocity transformation
-        # self.J = np.array([[0, 0, 1, 0, 0, 0], [-0.045, 0, -0.018, 0, -1, 0]])
-        # self.J = np.transpose(self.J)
-        # self.J = np.linalg.pinv(self.J)
+        self.J = np.array([[0, -0.045], [1, -0.018], [0, -1]])
+        self.J = np.linalg.pinv(self.J)
 
         self.start_time = time.time()
         self.total_steps = 0
@@ -84,59 +81,43 @@ class DispController:
         disp_y_grad = scipy.ndimage.sobel(disp, 0, mode='nearest')
 
         # calculate each term in the interaction matrix
-        A = self.fx * disp_x_grad
-        B = self.fy * disp_y_grad
-
-        L_dv_x = A
-        L_dv_y = B
-        L_dv_z = disp - self.x * A - self.y * B
-
-        L_dw_x = self.y * disp - self.x * self.y * A + (1 + self.y ** 2) * B
-        L_dw_y = -self.x * disp + (1 + self.x ** 2) * A + self.x * self.y * B
-        L_dw_z = self.x * B - self.y * A
+        L_dv_x = disp / self.baseline * disp_x_grad
+        L_dv_z = disp ** 2 / (self.baseline * self.fx) - disp * self.x * disp_x_grad / (self.baseline * self.fx) - disp * self.y * disp_y_grad / (self.baseline * self.fx)
+        L_dw_y = -disp * self.x / self.fx + (self.fy ** 2 + self.x ** 2) * disp_x_grad / self.fx + self.x * self.y * disp_y_grad / self.fx
 
         # flatten all 2D values
         L_dv_x = L_dv_x.flatten()
-        L_dv_y = L_dv_y.flatten()
         L_dv_z = L_dv_z.flatten()
-        L_dw_x = L_dw_x.flatten()
         L_dw_y = L_dw_y.flatten()
-        L_dw_z = L_dw_z.flatten()
         disp_control = disp.flatten()
         occ_control = occ.flatten()
 
         # select non-occluded pixels in both the current view and the target view
         curr_occ_mask = occ_control >= self.occ_thres
-        occ_selection = curr_occ_mask * self.ref_occ_mask  # equivalent to and operator
+        # equivalent to or operator
+        occ_selection = curr_occ_mask + self.ref_occ_mask  
+        occ_selection = occ_selection > 0
 
         # select non-occluded pixels
         ref_disp = self.ref_disp[occ_selection]
         disp_control = disp_control[occ_selection]
         occ_control = occ_control[occ_selection]
         L_dv_x = L_dv_x[occ_selection]
-        L_dv_y = L_dv_y[occ_selection]
         L_dv_z = L_dv_z[occ_selection]
-        L_dw_x = L_dw_x[occ_selection]
         L_dw_y = L_dw_y[occ_selection]
-        L_dw_z = L_dw_z[occ_selection]
 
         # build the final interaction matrix
-        L_dv = np.stack((L_dv_x, L_dv_y, L_dv_z), axis=-1)
-        L_dw = np.stack((L_dw_x, L_dw_y, L_dw_z), axis=-1)
-        L_dv_factor = disp_control / (self.baseline * self.fx)
-        L_dv = np.expand_dims(L_dv_factor, -1) * L_dv
-        L_d = np.concatenate((L_dv, L_dw), axis=-1)
+        L_d = np.stack((L_dv_x, L_dv_z, L_dw_y), axis=-1)
         
         # calculate the velocity
         L_d_inv = np.linalg.pinv(L_d)
         if self.occ_aware:
-            L_d_inv = occ_control * L_d_inv
+            L_d_inv = occ_control * L_d_inv  # equivalent to building a diagonal matrix from occ_control
         # velocity in the camera frame
         vel = - self.gain * np.matmul(L_d_inv, (disp_control - ref_disp))
         # velocity in the robot frame
-        vel = np.matmul(self.vel_trans, vel)
-        # use self.J instead
-        # vel = np.matmul(self.J, vel)
+        # print(vel)
+        vel = np.matmul(self.J, vel)
         return vel
 
     def _callback(self, disp_msg, occ_msg):
@@ -148,12 +129,7 @@ class DispController:
         # publish robot velocity
         vel = Twist()
         vel.linear.x = cmd_vel[0]
-        vel.angular.z = cmd_vel[5]
-        # print(cmd_vel)
-        # for self.J
-        # vel.linear.x = cmd_vel[0]
-        # vel.angular.z = cmd_vel[1]
-        # print(vel)
+        vel.angular.z = cmd_vel[1]
         self.vel_pub.publish(vel)
         self.total_steps += 1
         print("FPS: %.2f" % ( self.total_steps / (time.time() - self.start_time)))
@@ -169,8 +145,8 @@ if __name__ == "__main__":
     
     # Controller setting
     occ_aware = True
-    gain = 50
-    occ_thres = 0.9
+    gain = 30
+    occ_thres = 0.7
     # camera settings
     fx = rospy.get_param("/visual_servo/focal_fx")
     fy = rospy.get_param("/visual_servo/focal_fy")

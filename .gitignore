@@ -1,0 +1,6 @@
+crd_fusion_perception/crd_utils/conf_generation/__pycache__
+crd_fusion_perception/crd_utils/crd_fusion/__pycache__/
+depth_visual_servo_common/src/depth_visual_servo_common/__pycache__/
+depth_visual_servo_common/src/depth_visual_servo_common/*.pyc
+depth_visual_servo_common/*.bag
+depth_visual_servo_common/realsense

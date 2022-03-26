@@ -6,13 +6,19 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
+  message_filters
 )
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-catkin_package()
+catkin_package(
+  CATKIN_DEPENDS
+  rospy
+  sensor_msgs
+  message_filters
+)
 
 catkin_install_python(PROGRAMS
   script/set_common_param.py
