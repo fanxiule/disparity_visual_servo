@@ -27,6 +27,8 @@ class DispRefiner:
         self.device = device
         crop_w, crop_h = rospy.get_param("/visual_servo/cropped_img_sz")
         orig_w, orig_h = rospy.get_param("/visual_servo/orig_img_sz")
+        self.fx = rospy.get_param("/visual_servo/focal_fx")
+        self.baseline = 1000 * rospy.get_param("/visual_servo/baseline")
         self.crop_x1 = (orig_w - crop_w) // 2
         self.crop_y1 = (orig_h - crop_h) // 2
         self.crop_x2 = self.crop_x1 + crop_w
@@ -50,9 +52,9 @@ class DispRefiner:
         self.imgnet_std = self.imgnet_std.to(self.device)
 
         # subscribers and publishers for communication
-        self.left_img_sub = Subscriber("/camera/infra1/image_raw", Image)
-        self.right_img_sub = Subscriber("/camera/infra2/image_raw", Image)
-        self.raw_disp_sub = Subscriber("/raw_disp", Image)
+        self.left_img_sub = Subscriber("/camera/infra1/image_rect_raw", Image)
+        self.right_img_sub = Subscriber("/camera/infra2/image_rect_raw", Image)
+        self.raw_disp_sub = Subscriber("/camera/depth/image_rect_raw", Image)
         self.sub_synch = ApproximateTimeSynchronizer(
             [self.left_img_sub, self.right_img_sub, self.raw_disp_sub], queue_size=1, slop=0.05)
         self.sub_synch.registerCallback(self._callback)
@@ -87,6 +89,10 @@ class DispRefiner:
             torch.float32).to(self.device)
         img = (img - self.imgnet_mean) / self.imgnet_std
         return img
+    
+    def _depth2disp(self, raw_depth):
+        raw_disp = self.baseline * self.fx / raw_depth
+        return raw_disp
 
     def _callback(self, left, right, raw_d):
         """
@@ -101,6 +107,7 @@ class DispRefiner:
         left_ir = image_to_numpy(left)
         right_ir = image_to_numpy(right)
         raw_disp = image_to_numpy(raw_d)
+        raw_disp = self._depth2disp(raw_disp)
 
         # image cropping
         left_ir = left_ir[self.crop_y1:self.crop_y2, self.crop_x1:self.crop_x2]

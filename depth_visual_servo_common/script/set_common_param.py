@@ -13,17 +13,19 @@ def set_param():
     # In simulation, orig_img_w and orig_img_h can be set in d435.gazebo.xacro
     # focal_fx and focal_fy can be found by running $ rostopic echo /camera/infra1/camera_info
     # baseline can be found by running $ rosrun tf tf_echo camera_left_ir_frame camera_right_ir_frame
-    focal_fx = 435
-    focal_fy = 435
-    orig_img_w = 800
-    orig_img_h = 600
-    orig_cu = orig_img_w / 2
-    orig_cv = orig_img_h / 2
+    focal_fx = 426.077
+    focal_fy = 426.077
+    orig_img_w = 848
+    orig_img_h = 480
+    orig_cu = 422.366
+    orig_cv = 241.651
     cropped_img_w = 320
     cropped_img_h = 240
-    cropped_cu = cropped_img_w / 2
-    cropped_cv = cropped_img_h / 2
-    baseline = 0.05
+    cropped_cu = orig_cu - (orig_img_w - cropped_img_w) / 2.0
+    cropped_cv = orig_cv - (orig_img_h - cropped_img_h) / 2.0
+    # cropped_cu = orig_cu / orig_img_w * cropped_img_w
+    # cropped_cv = orig_cv / orig_img_h * cropped_img_h
+    baseline = 50.146 / 1000
 
     rospy.set_param("/visual_servo/focal_fx", focal_fx)
     rospy.set_param("/visual_servo/focal_fy", focal_fy)
@@ -37,12 +39,12 @@ def set_param():
 
     print("-----------------------------------------------")
     print("Loaded common parameters to param server")
-    print("Focal length: %d, %d" % (focal_fx, focal_fx))
+    print("Focal length: %.2f, %.2f" % (focal_fx, focal_fx))
     print("Original image size: %d x %d" % (orig_img_w, orig_img_h))
     print("Original principal point: (%.2f, %.2f)" % (orig_cu, orig_cv))
     print("Cropped image size: %d x %d" % (cropped_img_w, cropped_img_h))
     print("Cropped principal point: (%.2f, %.2f)" % (cropped_cu, cropped_cv))
-    print("Baseline: %.2f m" % baseline)
+    print("Baseline: %.4f m" % baseline)
     print("-----------------------------------------------")
 
 

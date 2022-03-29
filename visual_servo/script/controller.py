@@ -60,7 +60,7 @@ class DispController:
         self.sub_synch = ApproximateTimeSynchronizer(
             [self.disp_sub, self.occ_sub], queue_size=1, slop=0.05)
         self.sub_synch.registerCallback(self._callback)
-        self.vel_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
+        self.vel_pub = rospy.Publisher("/cmd_vel_mux/input/teleop", Twist, queue_size=1)
 
         # a different strategy for camera-wheel velocity transformation
         self.J = np.array([[0, -0.045], [1, -0.018], [0, -1]])
