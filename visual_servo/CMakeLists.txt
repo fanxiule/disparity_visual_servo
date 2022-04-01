@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   geometry_msgs
   message_filters
+  tf
 )
 
 catkin_package(
@@ -25,5 +26,10 @@ catkin_install_python(PROGRAMS
 
 catkin_install_python(PROGRAMS
   script/controller.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+catkin_install_python(PROGRAMS
+  script/process_rosbag.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

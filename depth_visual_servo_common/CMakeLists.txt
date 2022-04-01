@@ -25,4 +25,9 @@ catkin_install_python(PROGRAMS
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+catkin_install_python(PROGRAMS
+  script/convert_dataset.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 catkin_python_setup()

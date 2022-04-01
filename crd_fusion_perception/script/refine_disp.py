@@ -6,6 +6,7 @@ import sys
 import rospy
 import torch
 import rospkg
+import torch.nn.functional as f
 
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
@@ -124,6 +125,9 @@ class DispRefiner:
         conf = self.conf_gen.cal_confidence(left_ir, right_ir, raw_disp)
         conf[conf < self.conf_thres] = 0
         outputs = self.network(left_ir, right_ir, norm_raw_disp, conf)
+
+        # outputs['refined_disp0'] = f.avg_pool2d(outputs['refined_disp0'], 3, 1, 1)
+        # outputs['occ0'] = f.avg_pool2d(outputs['occ0'], 3, 1, 1)
 
         # convert to ROS Image from Torch tensors
         refined_disp = torch.squeeze(

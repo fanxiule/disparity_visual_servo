@@ -44,9 +44,8 @@ class DispController:
 
         # flatten ref_disp and create binary vector for ref_occ
         self.ref_disp = ref_disp.flatten()
-        ref_occ_vec = ref_occ.flatten()
-        self.ref_occ_mask = ref_occ_vec >= self.occ_thres
-
+        self.ref_occ = ref_occ.flatten()
+        
         # create pixel grids
         u = np.arange(1, img_w + 1)
         v = np.arange(1, img_h + 1)
@@ -93,30 +92,22 @@ class DispController:
         occ_control = occ.flatten()
 
         # select non-occluded pixels in both the current view and the target view
-        curr_occ_mask = occ_control >= self.occ_thres
-        # equivalent to or operator
-        occ_selection = curr_occ_mask + self.ref_occ_mask  
-        occ_selection = occ_selection > 0
-
-        # select non-occluded pixels
-        ref_disp = self.ref_disp[occ_selection]
-        disp_control = disp_control[occ_selection]
-        occ_control = occ_control[occ_selection]
-        L_dv_x = L_dv_x[occ_selection]
-        L_dv_z = L_dv_z[occ_selection]
-        L_dw_y = L_dw_y[occ_selection]
+        occ_control = occ_control * self.ref_occ
+        occ_control[occ_control < self.occ_thres] = 0
 
         # build the final interaction matrix
         L_d = np.stack((L_dv_x, L_dv_z, L_dw_y), axis=-1)
         
         # calculate the velocity
-        L_d_inv = np.linalg.pinv(L_d)
         if self.occ_aware:
-            L_d_inv = occ_control * L_d_inv  # equivalent to building a diagonal matrix from occ_control
-        # velocity in the camera frame
-        vel = - self.gain * np.matmul(L_d_inv, (disp_control - ref_disp))
+            L_d_inv = np.linalg.pinv(np.expand_dims(occ_control, -1) * L_d)
+            # velocity in the camera frame
+            vel = - self.gain * np.matmul(L_d_inv, occ_control * (disp_control - self.ref_disp))
+        else:
+            L_d_inv = np.linalg.pinv(L_d)
+            # velocity in the camera frame
+            vel = -self.gain * np.matmul(L_d_inv, (disp_control - self.ref_disp))
         # velocity in the robot frame
-        # print(vel)
         vel = np.matmul(self.J, vel)
         return vel
 
@@ -145,8 +136,8 @@ if __name__ == "__main__":
     
     # Controller setting
     occ_aware = True
-    gain = 30
-    occ_thres = 0.7
+    gain = 50
+    occ_thres = 0.3
     # camera settings
     fx = rospy.get_param("/visual_servo/focal_fx")
     fy = rospy.get_param("/visual_servo/focal_fy")
