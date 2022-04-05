@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 import os
+from re import S
 import time
 import sys
 import rospy
 import torch
 import rospkg
 
-from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
+from crd_fusion_perception.msg import StereoImgs
 from depth_visual_servo_common.image_np_conversion import image_to_numpy, numpy_to_image
 
 from conf_generation import ConfGeneration
@@ -52,12 +53,7 @@ class DispRefiner:
         self.imgnet_std = self.imgnet_std.to(self.device)
 
         # subscribers and publishers for communication
-        self.left_img_sub = Subscriber("/camera/infra1/image_rect_raw", Image)
-        self.right_img_sub = Subscriber("/camera/infra2/image_rect_raw", Image)
-        self.raw_disp_sub = Subscriber("/camera/depth/image_rect_raw", Image)
-        self.sub_synch = ApproximateTimeSynchronizer(
-            [self.left_img_sub, self.right_img_sub, self.raw_disp_sub], queue_size=1, slop=0.05)
-        self.sub_synch.registerCallback(self._callback)
+        self.sub = rospy.Subscriber("/raw_imgs", StereoImgs, self._callback)
         self.refined_disp_pub = rospy.Publisher(
             "/refined_disp", Image, queue_size=1)
         self.occ_pub = rospy.Publisher("/occlusion", Image, queue_size=1)
@@ -94,19 +90,17 @@ class DispRefiner:
         raw_disp = self.baseline * self.fx / raw_depth
         return raw_disp
 
-    def _callback(self, left, right, raw_d):
+    def _callback(self, imgs):
         """
         Callback to run the CRD-Fusion model
         
-        :param left: ROS message with left IR image
-        :param right: ROS message with right IR image
-        :param raw_d: ROS message with raw disparity image
+        :param imgs: ROS message with stereo images and raw disparity
         """
 
         # convert to numpy from ROS Image message
-        left_ir = image_to_numpy(left)
-        right_ir = image_to_numpy(right)
-        raw_disp = image_to_numpy(raw_d)
+        left_ir = image_to_numpy(imgs.left)
+        right_ir = image_to_numpy(imgs.right)
+        raw_disp = image_to_numpy(imgs.raw_disp)
         raw_disp = self._depth2disp(raw_disp)
 
         # image cropping
@@ -124,7 +118,7 @@ class DispRefiner:
         left_ir = self._np_img2tensor(left_ir)
         right_ir = self._np_img2tensor(right_ir)
         raw_disp = torch.from_numpy(raw_disp).unsqueeze(
-            0).unsqueeze(0).to(self.device)
+            0).unsqueeze(0).to(torch.float32).to(self.device)
         norm_raw_disp = self._norm_disp(raw_disp)
 
         # process with CRD-Fusion

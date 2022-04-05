@@ -1,0 +1,6 @@
+<launch>
+    <include file="$(find depth_visual_servo_common)/launch/set_common_param.launch"/>
+    <include file="$(find crd_fusion_perception)/launch/rs_camera.launch"/>
+    <node pkg="crd_fusion_perception" type="relay_imgs.py" name="relay_imgs" output="screen"/>
+    <node pkg="crd_fusion_perception" type="refine_disp.py" name="refine_disp" output="screen"/>
+</launch>
