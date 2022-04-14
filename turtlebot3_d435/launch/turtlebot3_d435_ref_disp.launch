@@ -4,6 +4,10 @@
     <arg name="y_pos" default="-1.5" />
     <arg name="z_pos" default="0.0" />
     <arg name="z_rot" default="1.571" />
+    <!--arg name="x_pos" default="1.920" />
+    <arg name="y_pos" default="-1.125" />
+    <arg name="z_pos" default="0.0" />
+    <arg name="z_rot" default="1.761" /-->
     <arg name="open_rviz" default="true" />
     <arg name="rviz_config" default="$(find turtlebot3_d435)/rviz/robot_images.rviz" />
     

@@ -62,7 +62,7 @@ class DispRefiner:
         self.occ_pub = rospy.Publisher("/occlusion", Image, queue_size=1)
         
         # for runtime calculation
-        self.start_time = time.time()
+        self.start_time = None
         self.total_frame = 0
 
     def _norm_disp(self, disp):
@@ -97,6 +97,8 @@ class DispRefiner:
         :param right: ROS message with right IR image
         :param raw_d: ROS message with raw disparity image
         """
+        if self.start_time is None:
+            self.start_time = time.time()
 
         # convert to numpy from ROS Image message
         left_ir = image_to_numpy(left)
@@ -136,6 +138,8 @@ class DispRefiner:
         occ = (255*occ).astype("uint8")
         refined_disp_msg = numpy_to_image(refined_disp, "32FC1")
         occ_msg = numpy_to_image(occ, "8UC1")
+        refined_disp_msg.header = left.header
+        occ_msg.header = left.header
 
         # publish the refined disparity and occlusion
         self.refined_disp_pub.publish(refined_disp_msg)
@@ -143,7 +147,7 @@ class DispRefiner:
 
         # runtime computation
         self.total_frame += 1
-        print("FPS: %.2f" % ( self.total_frame / (time.time() - self.start_time)))
+        print("FPS: %.2f" % (self.total_frame / (time.time() - self.start_time)))
 
 
 if __name__ == "__main__":
