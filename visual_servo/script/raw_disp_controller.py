@@ -8,7 +8,6 @@ import numpy as np
 import scipy.ndimage
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
-from message_filters import Subscriber, ApproximateTimeSynchronizer
 from depth_visual_servo_common.image_np_conversion import image_to_numpy
 
 
@@ -16,14 +15,12 @@ from depth_visual_servo_common.image_np_conversion import image_to_numpy
 # Moving axis rotation: xb>-90, yb'>+90
 # R^b_o = [0, 0, 1; -1, 0, 0; 0, -1, 0]
 
-
 class DispController:
-    def __init__(self, ref_disp, ref_occ, gain, baseline, fx, fy, img_w, img_h, cu, cv, occ_aware=True):
+    def __init__(self, ref_disp, gain, baseline, fx, fy, img_w, img_h, orig_w, orig_h, cu, cv):
         """
         Controller for disparity based visual servoing
 
         :param ref_disp: reference disparity map
-        :param ref_occ: reference occlusion map
         :param gain: controller gain
         :param baseline: camera baseline
         :param fx: focal length in x
@@ -32,18 +29,23 @@ class DispController:
         :param img_h: image height
         :param cu: principal point in x
         :param cv: principal point in y
-        :param occ_aware: a flag if the controller is occlusion-aware
         """
         self.gain = gain
-        self.occ_aware = occ_aware
         self.fx = fx
         self.fy = fy
         self.baseline = baseline
+        self.crop_x1 = (orig_w - img_w) // 2
+        self.crop_y1 = (orig_h - img_h) // 2
+        self.crop_x2 = self.crop_x1 + img_w
+        self.crop_y2 = self.crop_y1 + img_h
 
-        # flatten ref_disp and ref_occ
+        # flatten ref_disp
+        self.upper_bound = 64
         self.ref_disp = ref_disp.flatten()
-        self.ref_occ = ref_occ.flatten()
-
+        ref_mask1 = self.ref_disp > 0
+        ref_mask2 = self.ref_disp < self.upper_bound
+        self.ref_mask = ref_mask1 * ref_mask2
+        
         # create pixel grids
         u = np.arange(1, img_w + 1)
         v = np.arange(1, img_h + 1)
@@ -52,11 +54,7 @@ class DispController:
         self.y = v - cv
 
         # subscribers and publisher
-        self.disp_sub = Subscriber("/refined_disp", Image)
-        self.occ_sub = Subscriber("/occlusion", Image)
-        self.sub_synch = ApproximateTimeSynchronizer(
-            [self.disp_sub, self.occ_sub], queue_size=1, slop=0.05)
-        self.sub_synch.registerCallback(self._callback)
+        self.disp_sub = rospy.Subscriber("/raw_disp", Image, self._callback)
         self.vel_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
 
         # a different strategy for camera-wheel velocity transformation
@@ -66,12 +64,12 @@ class DispController:
         self.start_time = None
         self.total_steps = 0
 
-    def _cal_control_action(self, disp, occ):
+    def _cal_control_action(self, disp, mask):
         """
         Calculate the control action
 
         :param disp: disparity map
-        :param occ: occlusion mask
+        :param occ: validity mask for disparity
         :return: calculated velocity
         """
         disp_x_grad = scipy.ndimage.sobel(disp, 1, mode='nearest')
@@ -87,36 +85,36 @@ class DispController:
         L_dv_z = L_dv_z.flatten()
         L_dw_y = L_dw_y.flatten()
         disp_control = disp.flatten()
-        occ_control = occ.flatten()
+        mask_control = mask.flatten()
 
-        # select non-occluded pixels in both the current view and the target view
-        occ_control = occ_control * self.ref_occ
+        # select valid pixels in both the current view and the target view
+        mask_control = mask_control * self.ref_mask
 
         # build the final interaction matrix
         L_d = np.stack((L_dv_x, L_dv_z, L_dw_y), axis=-1)
-        
+
         # calculate the velocity
-        if self.occ_aware:
-            L_d_inv = np.linalg.pinv(np.expand_dims(occ_control, -1) * L_d)
-            # velocity in the camera frame
-            vel = - self.gain * np.matmul(L_d_inv, occ_control * (disp_control - self.ref_disp))
-        else:
-            L_d_inv = np.linalg.pinv(L_d)
-            # velocity in the camera frame
-            vel = -self.gain * np.matmul(L_d_inv, (disp_control - self.ref_disp))
+        L_d_inv = np.linalg.pinv(np.expand_dims(mask_control, -1) * L_d)
+        # velocity in the camera frame
+        vel = - self.gain * np.matmul(L_d_inv, mask_control * (disp_control - self.ref_disp))
         # velocity in the robot frame
         vel = np.matmul(self.J, vel)
         return vel
 
-    def _callback(self, disp_msg, occ_msg):
+    def _callback(self, disp_msg):
         if self.start_time is None:
             self.start_time = time.time()
 
         disp = image_to_numpy(disp_msg)
-        occ = image_to_numpy(occ_msg) / 255.0
+        disp = disp[self.crop_y1:self.crop_y2,
+                    self.crop_x1:self.crop_x2]
 
-        cmd_vel = self._cal_control_action(disp, occ)
-        
+        mask1 = disp > 0
+        mask2 = disp < self.upper_bound
+        mask = mask1 * mask2
+
+        cmd_vel = self._cal_control_action(disp, mask)
+
         # publish robot velocity
         vel = Twist()
         vel.linear.x = cmd_vel[0]
@@ -131,21 +129,21 @@ if __name__ == "__main__":
     pkg_path = rospack.get_path("visual_servo")
     # Load target
     save_folder = os.path.join(pkg_path, "target")
-    ref_disp = np.load(os.path.join(save_folder, "disp.npy"))
-    ref_occ = np.load(os.path.join(save_folder, "occ.npy"))
-    
+    ref_disp = np.load(os.path.join(save_folder, "raw_disp.npy"))
+
     # Controller setting
-    occ_aware = True
-    gain = 30
+    gain = 3000
     # camera settings
     fx = rospy.get_param("/visual_servo/focal_fx")
     fy = rospy.get_param("/visual_servo/focal_fy")
     img_w, img_h = rospy.get_param("/visual_servo/cropped_img_sz")
+    orig_w, orig_h = rospy.get_param("/visual_servo/orig_img_sz")
     cu, cv = rospy.get_param("/visual_servo/cropped_prinicipal_pt")
     baseline = rospy.get_param("/visual_servo/baseline")
 
-    rospy.init_node("controller", anonymous=True)
-    controller = DispController(ref_disp, ref_occ, gain, baseline, fx, fy, img_w, img_h, cu, cv, occ_aware)
+    rospy.init_node("raw_disp_controller", anonymous=True)
+    controller = DispController(
+        ref_disp, gain, baseline, fx, fy, img_w, img_h, orig_w, orig_h, cu, cv)
 
     try:
         rospy.spin()

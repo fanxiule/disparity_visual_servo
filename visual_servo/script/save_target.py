@@ -22,6 +22,16 @@ if not os.path.exists(save_folder):
 odom_saved = False
 occ_saved = False
 disp_saved = False
+raw_disp_saved = False
+left_saved = False
+right_saved = False
+
+crop_w, crop_h = rospy.get_param("/visual_servo/cropped_img_sz")
+orig_w, orig_h = rospy.get_param("/visual_servo/orig_img_sz")
+crop_x1 = (orig_w - crop_w) // 2
+crop_y1 = (orig_h - crop_h) // 2
+crop_x2 = crop_x1 + crop_w
+crop_y2 = crop_y1 + crop_h
 
 
 def odom_callback(odom):
@@ -64,7 +74,8 @@ def disp_callback(disp):
         disp_np = image_to_numpy(disp)
         disp_np = np.squeeze(disp_np)
         np.save(os.path.join(save_folder, "disp.npy"), disp_np)
-        cv2.imwrite(os.path.join(save_folder, "disp.png"), (255 * disp_np / 192).astype(np.uint8))
+        cv2.imwrite(os.path.join(save_folder, "disp.png"),
+                    (255 * disp_np / 192).astype(np.uint8))
         print("Disparity saved")
         disp_saved = True
 
@@ -78,11 +89,54 @@ def occ_callback(occ):
     global occ_saved
     if not occ_saved:
         occ_np = image_to_numpy(occ)
-        occ_np = np.squeeze(occ_np) / 255.0  # occlusion mask in uint8, convert it to [0, 1]
+        # occlusion mask in uint8, convert it to [0, 1]
+        occ_np = np.squeeze(occ_np) / 255.0
         np.save(os.path.join(save_folder, "occ.npy"), occ_np)
-        cv2.imwrite(os.path.join(save_folder, "occ.png"), (255 * occ_np).astype(np.uint8))
+        cv2.imwrite(os.path.join(save_folder, "occ.png"),
+                    (255 * occ_np).astype(np.uint8))
         print("Occlusion saved")
         occ_saved = True
+
+
+def raw_disp_callback(raw_disp):
+    global raw_disp_saved, crop_x1, crop_x2, crop_y1, crop_y2
+    if not raw_disp_saved:
+        raw_disp_np = image_to_numpy(raw_disp)
+        raw_disp_np = np.squeeze(raw_disp_np)
+        raw_disp_np = np.clip(raw_disp_np, 0, 255.0)
+        raw_disp_np = raw_disp_np[crop_y1:crop_y2,
+                                  crop_x1:crop_x2]
+        np.save(os.path.join(save_folder, "raw_disp.npy"), raw_disp_np)
+        cv2.imwrite(os.path.join(save_folder, "raw_disp.png"),
+                    (255 * raw_disp_np / 192).astype(np.uint8))
+        print("Raw disparity saved")
+        raw_disp_saved = True
+
+
+def left_callback(left):
+    global left_saved, crop_x1, crop_x2, crop_y1, crop_y2
+    if not left_saved:
+        left_np = image_to_numpy(left)
+        left_np = np.squeeze(left_np)
+        left_np = left_np[crop_y1:crop_y2,
+                          crop_x1:crop_x2]
+        cv2.imwrite(os.path.join(save_folder, "left.png"),
+                    left_np.astype(np.uint8))
+        print("Left stereo image saved")
+        left_saved = True
+
+
+def right_callback(right):
+    global right_saved, crop_x1, crop_x2, crop_y1, crop_y2
+    if not right_saved:
+        right_np = image_to_numpy(right)
+        right_np = np.squeeze(right_np)
+        right_np = right_np[crop_y1:crop_y2,
+                            crop_x1:crop_x2]
+        cv2.imwrite(os.path.join(save_folder, "right.png"),
+                    right_np.astype(np.uint8))
+        print("right stereo image saved")
+        right_saved = True
 
 
 if __name__ == "__main__":
@@ -91,5 +145,11 @@ if __name__ == "__main__":
     odom_subscriber = rospy.Subscriber("/odom", Odometry, odom_callback)
     disp_subscriber = rospy.Subscriber("/refined_disp", Image, disp_callback)
     occ_subscriber = rospy.Subscriber("/occlusion", Image, occ_callback)
+    raw_disp_subscriber = rospy.Subscriber(
+        "/raw_disp", Image, raw_disp_callback)
+    left_subscriber = rospy.Subscriber(
+        "/camera/infra1/image_raw", Image, left_callback)
+    right_subscriber = rospy.Subscriber(
+        "/camera/infra2/image_raw", Image, right_callback)
 
     rospy.spin()

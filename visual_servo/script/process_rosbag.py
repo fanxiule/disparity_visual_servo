@@ -69,6 +69,9 @@ class ImageProcessor:
         self.initial_frame = True
     
     def _callback(self, disp, occ):
+        sec = disp.header.stamp.secs
+        nsec = disp.header.stamp.nsecs
+        time = 1.0 * sec + 1.0 * nsec / (10**9)
         disp = image_to_numpy(disp)
         occ = image_to_numpy(occ) / 255.0
         total_px = disp.size
@@ -86,9 +89,8 @@ class ImageProcessor:
         np.save(disp_file, disp)
         np.save(occ_file, occ)
         
-
         with open(self.task_file, "a") as f:
-            f.write("%.5f\n" % task_err)
+            f.write("%.6f,%.5f\n" % (time, task_err))
 
 
 if __name__ == "__main__":

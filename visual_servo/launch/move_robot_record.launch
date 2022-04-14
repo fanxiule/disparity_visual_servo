@@ -1,4 +1,4 @@
 <launch>
     <node pkg="visual_servo" type="controller.py" name="move_robot" output="screen"/>
-    <node pkg="rosbag" type="record" name="record_rosbag" args="-o $(find visual_servo)/robot_state /odom /refined_disp /occlusion" output="screen" />
+    <node pkg="rosbag" type="record" name="record_rosbag" args="--duration=405 -o $(find visual_servo)/robot_state /odom /refined_disp /occlusion /cmd_vel" output="screen" />
 </launch>
