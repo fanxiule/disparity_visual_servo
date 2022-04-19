@@ -12,20 +12,20 @@ from message_filters import Subscriber, ApproximateTimeSynchronizer
 from depth_visual_servo_common.image_np_conversion import image_to_numpy
 
 
+# TODO needs to update these for the actual robot
 # p^b_o = [0.045, 0.018, 0.104]
 # Moving axis rotation: xb>-90, yb'>+90
 # R^b_o = [0, 0, 1; -1, 0, 0; 0, -1, 0]
 
 
 class DispController:
-    def __init__(self, ref_disp, ref_occ, gain, occ_thres, baseline, fx, fy, img_w, img_h, cu, cv, occ_aware=True):
+    def __init__(self, ref_disp, ref_occ, gain, baseline, fx, fy, img_w, img_h, cu, cv, occ_aware=True):
         """
         Controller for disparity based visual servoing
 
         :param ref_disp: reference disparity map
         :param ref_occ: reference occlusion map
         :param gain: controller gain
-        :param occ_thres: occlusion threshold for filtering
         :param baseline: camera baseline
         :param fx: focal length in x
         :param fy: focal length in y
@@ -37,15 +37,13 @@ class DispController:
         """
         self.gain = gain
         self.occ_aware = occ_aware
-        self.occ_thres = occ_thres
         self.fx = fx
         self.fy = fy
         self.baseline = baseline
 
-        # flatten ref_disp and create binary vector for ref_occ
+        # flatten ref_disp and ref_occ
         self.ref_disp = ref_disp.flatten()
-        ref_occ_vec = ref_occ.flatten()
-        self.ref_occ_mask = ref_occ_vec >= self.occ_thres
+        self.ref_occ = ref_occ.flatten()
 
         # create pixel grids
         u = np.arange(1, img_w + 1)
@@ -63,19 +61,20 @@ class DispController:
         self.vel_pub = rospy.Publisher("/cmd_vel_mux/input/teleop", Twist, queue_size=1)
 
         # a different strategy for camera-wheel velocity transformation
+        # TODO needs to update these for the actual robot
         self.J = np.array([[0, -0.045], [1, -0.018], [0, -1]])
         self.J = np.linalg.pinv(self.J)
 
-        self.start_time = time.time()
+        self.start_time = None
         self.total_steps = 0
 
     def _cal_control_action(self, disp, occ):
         """
         Calculate the control action
-        
+
         :param disp: disparity map
         :param occ: occlusion mask
-        :return: calculated 6 DOF velocity
+        :return: calculated velocity
         """
         disp_x_grad = scipy.ndimage.sobel(disp, 1, mode='nearest')
         disp_y_grad = scipy.ndimage.sobel(disp, 0, mode='nearest')
@@ -93,34 +92,28 @@ class DispController:
         occ_control = occ.flatten()
 
         # select non-occluded pixels in both the current view and the target view
-        curr_occ_mask = occ_control >= self.occ_thres
-        # equivalent to or operator
-        occ_selection = curr_occ_mask + self.ref_occ_mask  
-        occ_selection = occ_selection > 0
-
-        # select non-occluded pixels
-        ref_disp = self.ref_disp[occ_selection]
-        disp_control = disp_control[occ_selection]
-        occ_control = occ_control[occ_selection]
-        L_dv_x = L_dv_x[occ_selection]
-        L_dv_z = L_dv_z[occ_selection]
-        L_dw_y = L_dw_y[occ_selection]
+        occ_control = occ_control * self.ref_occ
 
         # build the final interaction matrix
         L_d = np.stack((L_dv_x, L_dv_z, L_dw_y), axis=-1)
         
         # calculate the velocity
-        L_d_inv = np.linalg.pinv(L_d)
         if self.occ_aware:
-            L_d_inv = occ_control * L_d_inv  # equivalent to building a diagonal matrix from occ_control
-        # velocity in the camera frame
-        vel = - self.gain * np.matmul(L_d_inv, (disp_control - ref_disp))
+            L_d_inv = np.linalg.pinv(np.expand_dims(occ_control, -1) * L_d)
+            # velocity in the camera frame
+            vel = - self.gain * np.matmul(L_d_inv, occ_control * (disp_control - self.ref_disp))
+        else:
+            L_d_inv = np.linalg.pinv(L_d)
+            # velocity in the camera frame
+            vel = -self.gain * np.matmul(L_d_inv, (disp_control - self.ref_disp))
         # velocity in the robot frame
-        # print(vel)
         vel = np.matmul(self.J, vel)
         return vel
 
     def _callback(self, disp_msg, occ_msg):
+        if self.start_time is None:
+            self.start_time = time.time()
+
         disp = image_to_numpy(disp_msg)
         occ = image_to_numpy(occ_msg) / 255.0
 
@@ -146,7 +139,6 @@ if __name__ == "__main__":
     # Controller setting
     occ_aware = True
     gain = 30
-    occ_thres = 0.7
     # camera settings
     fx = rospy.get_param("/visual_servo/focal_fx")
     fy = rospy.get_param("/visual_servo/focal_fy")
@@ -155,8 +147,7 @@ if __name__ == "__main__":
     baseline = rospy.get_param("/visual_servo/baseline")
 
     rospy.init_node("controller", anonymous=True)
-    controller = DispController(
-        ref_disp, ref_occ, gain, occ_thres, baseline, fx, fy, img_w, img_h, cu, cv, occ_aware)
+    controller = DispController(ref_disp, ref_occ, gain, baseline, fx, fy, img_w, img_h, cu, cv, occ_aware)
 
     try:
         rospy.spin()

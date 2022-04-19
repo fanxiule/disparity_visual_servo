@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import os
-from re import S
 import time
 import sys
 import rospy
 import torch
 import rospkg
+import numpy as np
 
 from sensor_msgs.msg import Image
 from crd_fusion_perception.msg import StereoImgs
@@ -104,6 +104,7 @@ class DispRefiner:
         right_ir = image_to_numpy(imgs.right)
         raw_disp = image_to_numpy(imgs.raw_disp)
         raw_disp = self._depth2disp(raw_disp)
+        raw_disp = np.nan_to_num(raw_disp, nan=0)
         raw_disp[raw_disp >= 192.0] = 0
 
         # image cropping
