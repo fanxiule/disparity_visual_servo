@@ -59,7 +59,7 @@ class DispRefiner:
         self.occ_pub = rospy.Publisher("/occlusion", Image, queue_size=1)
         
         # for runtime calculation
-        self.start_time = time.time()
+        self.start_time = None
         self.total_frame = 0
 
     def _norm_disp(self, disp):
@@ -96,12 +96,15 @@ class DispRefiner:
         
         :param imgs: ROS message with stereo images and raw disparity
         """
+        if self.start_time is None:
+            self.start_time = time.time()
 
         # convert to numpy from ROS Image message
         left_ir = image_to_numpy(imgs.left)
         right_ir = image_to_numpy(imgs.right)
         raw_disp = image_to_numpy(imgs.raw_disp)
         raw_disp = self._depth2disp(raw_disp)
+        raw_disp[raw_disp >= 192.0] = 0
 
         # image cropping
         left_ir = left_ir[self.crop_y1:self.crop_y2, self.crop_x1:self.crop_x2]
