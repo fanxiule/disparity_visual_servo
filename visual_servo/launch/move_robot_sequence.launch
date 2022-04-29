@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="visual_servo" type="controller_sequence.py" name="move_robot_sequence" output="screen"/>
+</launch>

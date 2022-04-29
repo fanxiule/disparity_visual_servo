@@ -18,13 +18,11 @@ from depth_visual_servo_common.image_np_conversion import image_to_numpy
 # R^b_o = [0, 0, 1; -1, 0, 0; 0, -1, 0]
 
 
-class DispController:
-    def __init__(self, ref_disp, ref_occ, gain, baseline, fx, fy, img_w, img_h, cu, cv, occ_aware=True):
+class SequenceDispController:
+    def __init__(self, ref_folder, gain, baseline, fx, fy, img_w, img_h, cu, cv, err_thres, occ_aware=True):
         """
         Controller for disparity based visual servoing
 
-        :param ref_disp: reference disparity map
-        :param ref_occ: reference occlusion map
         :param gain: controller gain
         :param baseline: camera baseline
         :param fx: focal length in x
@@ -40,10 +38,20 @@ class DispController:
         self.fx = fx
         self.fy = fy
         self.baseline = baseline
+        self.err_thres = err_thres
 
-        # flatten ref_disp and ref_occ
-        self.ref_disp = ref_disp.flatten()
-        self.ref_occ = ref_occ.flatten()
+        self.disp_folder = os.path.join(ref_folder, "disp")
+        self.occ_folder = os.path.join(ref_folder, "occ")
+        self.ref_list = os.listdir(self.disp_folder)
+        for i in range(len(self.ref_list)):
+            id = self.ref_list[i]
+            id = id.strip(".npy")
+            self.ref_list[i] = int(id)
+        self.ref_list.sort()
+        self.current_id = 0
+        self.load_ref_flag = True
+        self.ref_disp = None
+        self.ref_occ = None
 
         # create pixel grids
         u = np.arange(1, img_w + 1)
@@ -112,9 +120,31 @@ class DispController:
         vel = np.matmul(self.J, vel)
         return vel
 
+    def _load_ref(self):
+        if self.current_id >= len(self.ref_list):
+            self.load_ref_flag = False
+        else:
+            self.ref_disp = np.load(os.path.join(self.disp_folder, "%d.npy" % self.ref_list[self.current_id]))
+            self.ref_occ = np.load(os.path.join(self.occ_folder, "%d.npy" % self.ref_list[self.current_id]))
+            self.ref_disp = self.ref_disp.flatten()
+            self.ref_occ = self.ref_occ.flatten()
+            self.current_id += 1
+            self.load_ref_flag = False
+
+    def _cal_task_error(self, curr_disp, curr_occ):
+        task_err = (self.ref_occ * curr_occ.flatten()) * np.abs(self.ref_disp - curr_disp.flatten())
+        task_err = np.sum(task_err) / self.ref_disp.size
+        print(task_err)
+        print("Using frame %d" % self.current_id)
+        if task_err <= self.err_thres:
+            self.load_ref_flag = True
+
     def _callback(self, disp_msg, occ_msg):
         if self.start_time is None:
             self.start_time = time.time()
+        
+        if self.load_ref_flag:
+            self._load_ref()
 
         disp = image_to_numpy(disp_msg)
         occ = image_to_numpy(occ_msg) / 255.0
@@ -135,7 +165,9 @@ class DispController:
 
         vel.linear.x = cmd_vel[0]
         vel.angular.z = cmd_vel[1]
+        print(cmd_vel)
         self.vel_pub.publish(vel)
+        self._cal_task_error(disp, occ)
         self.total_steps += 1
         print("FPS: %.2f" % ( self.total_steps / (time.time() - self.start_time)))
 
@@ -144,13 +176,12 @@ if __name__ == "__main__":
     rospack = rospkg.RosPack()
     pkg_path = rospack.get_path("visual_servo")
     # Load target
-    save_folder = os.path.join(pkg_path, "target")
-    ref_disp = np.load(os.path.join(save_folder, "disp.npy"))
-    ref_occ = np.load(os.path.join(save_folder, "occ.npy"))
+    save_folder = os.path.join(pkg_path, "sequence")
     
     # Controller setting
     occ_aware = True
     gain = 5
+    err_thres = 1
     # camera settings
     fx = rospy.get_param("/visual_servo/focal_fx")
     fy = rospy.get_param("/visual_servo/focal_fy")
@@ -159,7 +190,7 @@ if __name__ == "__main__":
     baseline = rospy.get_param("/visual_servo/baseline")
 
     rospy.init_node("controller", anonymous=True)
-    controller = DispController(ref_disp, ref_occ, gain, baseline, fx, fy, img_w, img_h, cu, cv, occ_aware)
+    controller = SequenceDispController(save_folder, gain, baseline, fx, fy, img_w, img_h, cu, cv, err_thres, occ_aware)
 
     try:
         rospy.spin()

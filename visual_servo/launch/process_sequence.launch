@@ -1,0 +1,5 @@
+<launch>
+    <arg name="bag_file" default="$(find visual_servo)/sequence_2022-04-29-00-45-51.bag" />
+    <node pkg="visual_servo" type="save_sequence.py" name="process_sequence" output="screen" />
+    <node pkg="rosbag" type="play" name="replay_data" args="$(arg bag_file)" output="screen" />
+</launch>

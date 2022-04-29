@@ -40,7 +40,9 @@ class DatasetConverter:
         disp[disp < 0] = 0
         encoded_disp = np.zeros(
             (disp.shape[0], disp.shape[1], 3), dtype='uint8')
-        d_r, remainder = np.divmod(disp, 4.0)
+        d_r = disp // 4
+        remainder = disp - 4 * d_r
+        # d_r, remainder = np.divmod(disp, 4.0)
         d_r = d_r.astype('uint8')
         d_g = (64.0 * remainder).astype('uint8')
         # Note that OpenCV by default treats image as BGR instead of RGB
@@ -75,8 +77,13 @@ if __name__ == "__main__":
     pkg_path = rospack.get_path("depth_visual_servo_common")
     save_path = os.path.join(pkg_path, "realsense")
 
-    baseline = 50.146
-    focal_length = 426.077
+    # d435 848 x 480
+    # baseline = 50.146
+    # focal_length = 426.077
+    # d415 640 x 480
+    baseline = 55.003
+    focal_length = 608.263
+
     rospy.init_node("dataset_converter", anonymous=True)
     converter = DatasetConverter(baseline, focal_length, save_path)
 

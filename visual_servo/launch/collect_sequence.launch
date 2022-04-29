@@ -1,0 +1,6 @@
+<launch>
+    <include file="$(find turtlebot_bringup)/launch/minimal.launch"/>
+    <include file="$(find turtlebot_teleop)/launch/keyboard_teleop.launch"/>
+
+    <node pkg="rosbag" type="record" name="record_dataset" args="-o $(find visual_servo)/sequence /camera/infra1/image_rect_raw /camera/infra2/image_rect_raw /refined_disp /occlusion" output="screen" />
+</launch>

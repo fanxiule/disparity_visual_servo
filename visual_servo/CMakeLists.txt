@@ -32,3 +32,13 @@ catkin_install_python(PROGRAMS
   script/process_rosbag.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+catkin_install_python(PROGRAMS
+  script/controller_sequence.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+catkin_install_python(PROGRAMS
+  script/save_sequence.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
