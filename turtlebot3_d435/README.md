@@ -11,3 +11,8 @@ If you want to run the task above AND use a stereo matching algorithm provided b
 ```
 roslaunch turtlebot3_d435 turtlebot3_d435_raw_disparity.launch
 ```
+
+If you want to run the first task AND use the CRD-Fusion pipeline to compute disparity, run
+```
+roslaunch turtlebot3_d435 turtlebot3_d435_ref_disparity.launch
+```
