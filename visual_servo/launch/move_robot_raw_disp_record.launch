@@ -1,4 +1,4 @@
 <launch>
-    <node pkg="visual_servo" type="feat_controller.py" name="move_robot_feat" output="screen"/>
+    <node pkg="visual_servo" type="raw_disp_controller.py" name="move_robot" output="screen"/>
     <node pkg="rosbag" type="record" name="record_rosbag" args="--duration=405 -o $(find visual_servo)/robot_state /odom /cmd_vel" output="screen" />
 </launch>

@@ -16,7 +16,7 @@ from depth_visual_servo_common.image_np_conversion import image_to_numpy
 
 
 class FeatController:
-    def __init__(self, ref_disp, ref_left, gain, baseline, fx, fy, cu, cv, img_h, img_w, orig_h, orig_w, ORB_flag=True):
+    def __init__(self, ref_disp, ref_left, gain, baseline, fx, fy, cu, cv, img_h, img_w, orig_h, orig_w, CRD_flag, ORB_flag=True):
         self.gain = gain
         self.baseline = baseline
         self.fx = fx
@@ -31,20 +31,24 @@ class FeatController:
 
         self.ref_depth = self.baseline * self.fx / ref_disp
         self.ORB_flag = ORB_flag
+        self.CRD_flag = CRD_flag
         if self.ORB_flag:
             self.descriptor_extractor = ORB(n_keypoints=500)
             self.descriptor_extractor.detect_and_extract(ref_left)
             self.keypoints_ref = self.descriptor_extractor.keypoints
             self.descriptors_ref = self.descriptor_extractor.descriptors
         else:
-            self.descriptor_extractor = cv2.SIFT_create()
+            self.descriptor_extractor = cv2.SIFT_create(nfeatures=500)
             keypoints_ref, self.descriptors_ref = self.descriptor_extractor.detectAndCompute(ref_left, None)
             self.keypoints_ref = np.zeros((len(keypoints_ref), 2))
             for i in range(len(keypoints_ref)):
                 self.keypoints_ref[i, :] = np.asarray([keypoints_ref[i].pt[1], keypoints_ref[i].pt[0]])
 
         # subscribers and publisher
-        self.disp_sub = Subscriber("/raw_disp", Image)
+        if self.CRD_flag:
+            self.disp_sub = Subscriber("/refined_disp", Image)
+        else:
+            self.disp_sub = Subscriber("/raw_disp", Image)
         self.ir_sub = Subscriber("/camera/infra1/image_raw", Image)
         self.sub_synch = ApproximateTimeSynchronizer(
             [self.disp_sub, self.ir_sub], queue_size=1, slop=0.05)
@@ -119,8 +123,9 @@ class FeatController:
             self.start_time = time.time()
 
         disp = image_to_numpy(disp_msg)
-        disp = disp[self.crop_y1:self.crop_y2,
-                    self.crop_x1:self.crop_x2]
+        if not self.CRD_flag:
+            disp = disp[self.crop_y1:self.crop_y2,
+                        self.crop_x1:self.crop_x2]
         depth = self.baseline * self.fx / disp
         ir = image_to_numpy(ir_msg)
         ir = ir[self.crop_y1:self.crop_y2,
@@ -140,15 +145,20 @@ class FeatController:
 if __name__ == "__main__":
     rospack = rospkg.RosPack()
     pkg_path = rospack.get_path("visual_servo")
-    # Load target
-    save_folder = os.path.join(pkg_path, "target")
-    ref_disp = np.load(os.path.join(save_folder, "disp.npy"))
-    ref_left = skimage.io.imread(os.path.join(save_folder, "left.png"))
 
     # Controller setting
-    occ_aware = True
+    crd_fusion = False
     gain = 0.1
     ORB_flag = True
+
+    # Load target
+    save_folder = os.path.join(pkg_path, "target")
+    ref_left = skimage.io.imread(os.path.join(save_folder, "left.png"))
+    if crd_fusion:
+        ref_disp = np.load(os.path.join(save_folder, "disp.npy"))
+    else:
+        ref_disp = np.load(os.path.join(save_folder, "raw_disp.npy"))
+
     # camera settings
     fx = rospy.get_param("/visual_servo/focal_fx")
     fy = rospy.get_param("/visual_servo/focal_fy")
@@ -159,7 +169,7 @@ if __name__ == "__main__":
 
     rospy.init_node("controller", anonymous=True)
     controller = FeatController(
-        ref_disp, ref_left, gain, baseline, fx, fy, cu, cv, img_h, img_w, orig_h, orig_w, ORB_flag)
+        ref_disp, ref_left, gain, baseline, fx, fy, cu, cv, img_h, img_w, orig_h, orig_w, crd_fusion, ORB_flag)
 
     try:
         rospy.spin()
