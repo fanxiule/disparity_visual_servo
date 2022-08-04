@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="visual_servo" type="controller_sequence.py" name="move_robot_sequence" output="screen"/>
+    <node pkg="rosbag" type="record" name="record_rosbag" args="--duration=300 -o $(find visual_servo)/sequence /odom /refined_disp /occlusion /cmd_vel_mux/input/teleop" output="screen" />
+</launch>

@@ -181,7 +181,7 @@ if __name__ == "__main__":
     # Controller setting
     occ_aware = True
     gain = 5
-    err_thres = 1
+    err_thres = 0.3
     # camera settings
     fx = rospy.get_param("/visual_servo/focal_fx")
     fy = rospy.get_param("/visual_servo/focal_fy")

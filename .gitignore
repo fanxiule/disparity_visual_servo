@@ -9,4 +9,3 @@ depth_visual_servo_common/realsense
 visual_servo/target/config*
 visual_servo/*.bag
 visual_servo/robot_state/
-visual_servo/sequence/

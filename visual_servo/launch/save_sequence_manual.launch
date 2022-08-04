@@ -1,0 +1,4 @@
+<launch>
+    <!-- Record target images one by one manually for the navigation experiment -->
+    <node pkg="visual_servo" type="save_sequence_manual.py" name="manual_record_seq" output="screen"/>
+</launch>
