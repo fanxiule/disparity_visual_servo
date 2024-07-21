@@ -50,3 +50,18 @@ To start the disparity-based controller, run
 $ roslaunch visual_servo move_robot.launch
 ```
 This command will run the controller by using the target images as the reference signals.
+
+### Citation
+
+If you find our work useful for your research, please consider citing our book chapter.
+
+```
+@inbook{visual_servo,
+  author = {Fan, Xiule and Fidan, Baris and Jeon, Soo},
+  title = {Occlusion-Aware Disparity-based Direct Visual Servoing of Mobile Robots},
+  year = {2024},
+  journal = {Measurements and Instrumentation for Machine Vision},
+  edition = {1},
+  publisher = {CRC Press},
+}
+```
