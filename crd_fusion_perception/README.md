@@ -1,5 +1,5 @@
 # CRD-Fusion for Disparity Prediction
-This package includes code based on [CRD-Fusion](https://github.com/fanxiule/CRD_Fusion) to refine raw disparity
+This package includes modules proposed in [CRD-Fusion](https://github.com/fanxiule/CRD_Fusion) and a script to refine raw disparity published by the camera.
 
 ## Using the Package
 After starting the robot-camera simulator, run the following command to predict disparity by using the CRD-Fusion pipeline

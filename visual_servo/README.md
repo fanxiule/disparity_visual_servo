@@ -6,7 +6,7 @@ After moving the robot to its desried pose, run the following command to record 
 ```
 roslaunch visual_servo record_ref.launch
 ```
-The images will be saved in the `target/` directory. Same sample images are provided in this folder.
+The images will be saved in the `target/` directory. Some sample reference images are provided in this folder already.
 
 After recording the target images, run the following command to start the controller
 ```
