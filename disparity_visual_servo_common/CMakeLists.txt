@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(depth_visual_servo_common)
+project(disparity_visual_servo_common)
 
 add_compile_options(-std=c++11)
 

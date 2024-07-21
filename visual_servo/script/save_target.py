@@ -8,7 +8,7 @@ import rospkg
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image
 
-from depth_visual_servo_common.image_np_conversion import image_to_numpy
+from disparity_visual_servo_common.image_np_conversion import image_to_numpy
 
 # Ensure the robot is stationary when executing this script
 

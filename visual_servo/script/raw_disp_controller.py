@@ -8,7 +8,7 @@ import numpy as np
 import scipy.ndimage
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
-from depth_visual_servo_common.image_np_conversion import image_to_numpy
+from disparity_visual_servo_common.image_np_conversion import image_to_numpy
 
 
 # p^b_o = [0.045, 0.018, 0.104]

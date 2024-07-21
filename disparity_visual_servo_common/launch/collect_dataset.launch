@@ -19,5 +19,5 @@
 
     <include file="$(find turtlebot3_teleop)/launch/turtlebot3_teleop_key.launch"/>
 
-    <node pkg="rosbag" type="record" name="record_dataset" args="-o $(find depth_visual_servo_common)/dataset /raw_disp /camera/depth/image_raw /camera/infra1/image_raw /camera/infra2/image_raw" output="screen" />
+    <node pkg="rosbag" type="record" name="record_dataset" args="-o $(find disparity_visual_servo_common)/dataset /raw_disp /camera/depth/image_raw /camera/infra1/image_raw /camera/infra2/image_raw" output="screen" />
 </launch>

@@ -9,7 +9,7 @@ import numpy as np
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from depth_visual_servo_common.image_np_conversion import image_to_numpy
+from disparity_visual_servo_common.image_np_conversion import image_to_numpy
 
 np.seterr(divide='ignore')  # suppress warnings from division by 0
 

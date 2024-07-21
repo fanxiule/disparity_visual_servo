@@ -10,7 +10,7 @@ import torch.nn.functional as f
 
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
-from depth_visual_servo_common.image_np_conversion import image_to_numpy, numpy_to_image
+from disparity_visual_servo_common.image_np_conversion import image_to_numpy, numpy_to_image
 
 from conf_generation import ConfGeneration
 from crd_fusion import CRDFusionNet

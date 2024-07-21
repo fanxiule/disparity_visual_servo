@@ -20,15 +20,15 @@ First, we need to collect a dataset in the Gazebo environment to fine tune [CRD-
 Run the following commands to collect this dataset
 ```
 $ export TURTLEBOT3_MODEL=burger
-$ roslaunch depth_visual_servo_common collect_dataset.launch
+$ roslaunch disparity_visual_servo_common collect_dataset.launch
 ```
-A Gazebo environment will start after running the above command. Meanwhile, a rosbag containing the stereo IR images, ground truth depth, and raw disparity is saved in the `depth_visual_servo_common` package. 
+A Gazebo environment will start after running the above command. Meanwhile, a rosbag containing the stereo IR images, ground truth depth, and raw disparity is saved in the `disparity_visual_servo_common` package. 
 
 Use keyboard to teleoperate the robot. Then run the following command to convert the bag file into image files
 ```
-$ roslaunch depth_visual_servo_common convert_dataset.launch
+$ roslaunch disparity_visual_servo_common convert_dataset.launch
 ```
-Remember to change the `bag_file` argument in the launch file. The data in the bag file will be saved as images in the `depth_visual_servo_common/realsense`.
+Remember to change the `bag_file` argument in the launch file. The data in the bag file will be saved as images in the `disparity_visual_servo_common/realsense`.
 
 Organize the data and train the network by following instructions on the [CRD-Fusion](https://github.com/fanxiule/CRD_Fusion/tree/custom_data) repository.
 

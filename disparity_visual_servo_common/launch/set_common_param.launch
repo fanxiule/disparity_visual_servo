@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="disparity_visual_servo_common" type="set_common_param.py" name="common_param_setter" output="screen"/>
+</launch>

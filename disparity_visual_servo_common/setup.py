@@ -4,7 +4,7 @@ from distutils.core import setup
 from catkin_pkg.python_setup import generate_distutils_setup
 
 d = generate_distutils_setup(
-    packages=['depth_visual_servo_common'],
+    packages=['disparity_visual_servo_common'],
     package_dir={'': 'src'}
 )
 

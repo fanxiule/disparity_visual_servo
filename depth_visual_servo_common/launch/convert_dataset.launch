@@ -1,5 +1,0 @@
-<launch>
-    <arg name="bag_file" default="$(find depth_visual_servo_common)/dataset_2022-03-26-00-24-29.bag" />
-    <node pkg="depth_visual_servo_common" type="convert_dataset.py" name="convert_dataset" output="screen"/>
-    <node pkg="rosbag" type="play" name="replay_data" args="$(arg bag_file)" />
-</launch>

@@ -12,7 +12,7 @@ from skimage.feature import match_descriptors, ORB
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
-from depth_visual_servo_common.image_np_conversion import image_to_numpy
+from disparity_visual_servo_common.image_np_conversion import image_to_numpy
 
 
 class FeatController:

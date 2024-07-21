@@ -8,7 +8,7 @@ import numpy as np
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
 
-from depth_visual_servo_common.image_np_conversion import image_to_numpy
+from disparity_visual_servo_common.image_np_conversion import image_to_numpy
 
 
 class DatasetConverter:
@@ -77,7 +77,7 @@ class DatasetConverter:
 
 if __name__ == "__main__":
     rospack = rospkg.RosPack()
-    pkg_path = rospack.get_path("depth_visual_servo_common")
+    pkg_path = rospack.get_path("disparity_visual_servo_common")
     save_path = os.path.join(pkg_path, "realsense")
 
     baseline = 0.05

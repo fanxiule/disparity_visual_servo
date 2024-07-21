@@ -1,0 +1,5 @@
+<launch>
+    <arg name="bag_file" default="$(find disparity_visual_servo_common)/dataset_2024-07-21-15-53-59.bag" />
+    <node pkg="disparity_visual_servo_common" type="convert_dataset.py" name="convert_dataset" output="screen"/>
+    <node pkg="rosbag" type="play" name="replay_data" args="$(arg bag_file)" />
+</launch>

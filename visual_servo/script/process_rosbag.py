@@ -9,7 +9,7 @@ from message_filters import Subscriber, ApproximateTimeSynchronizer
 from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
 
-from depth_visual_servo_common.image_np_conversion import image_to_numpy
+from disparity_visual_servo_common.image_np_conversion import image_to_numpy
 
 
 class OdomProcessor:
