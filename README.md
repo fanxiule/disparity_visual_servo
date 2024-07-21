@@ -3,11 +3,11 @@
 This repository includes the required code to run an occlusion-aware disparity-based direct visual servoing algorithm for a mobile robot in a simulation environment using ROS, PyTorch, and Gazebo.
 
 This method was published in our [book chapter](https://www.taylorfrancis.com/chapters/edit/10.1201/9781003343783-10/occlusion-aware-disparity-based-direct-visual-servoing-mobile-robots-xiule-fan-baris-fidan-soo-jeon).
-```
-Occlusion-Aware Disparity-based Direct Visual Servoing of Mobile Robots
-by Xiule Fan, Baris Fidan, Soo Jeon
-Measurements and Instrumentation for Machine Vision, 2024
-```
+> Occlusion-Aware Disparity-based Direct Visual Servoing of Mobile Robots
+> 
+> by Xiule Fan, Baris Fidan, Soo Jeon
+> 
+> Measurements and Instrumentation for Machine Vision, 2024
 
 ## Dependencies
 
